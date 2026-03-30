@@ -83,7 +83,6 @@
   <!-- RECOMMEND -->
   <div class="card">
     <h2>🛒 Product Recommendation</h2>
-
     <input id="product" placeholder="Enter product">
     <button onclick="recommend()">Recommend</button>
     <ul id="recommendResult"></ul>
@@ -131,10 +130,15 @@ async function segment() {
   const res = await fetch(`${API}/predict_cluster?spending=${spending}`);
   const data = await res.json();
 
-  document.getElementById("clusterResult").innerText =
-    "Cluster: " + data.cluster;
+  if (data.cluster !== undefined) {
+    document.getElementById("clusterResult").innerText =
+      "Cluster: " + data.cluster;
 
-  updateClusterChart(data.input, data.cluster, data.centers);
+    updateClusterChart(data.input, data.cluster, data.centers);
+  } else {
+    document.getElementById("clusterResult").innerText =
+      "Error: " + data.error;
+  }
 }
 
 function updateClusterChart(input, cluster, centers) {
@@ -150,11 +154,11 @@ function updateClusterChart(input, cluster, centers) {
     data: {
       datasets: [
         {
-          label: "Centers",
+          label: "Cluster Centers",
           data: centerPoints
         },
         {
-          label: "Your Customer",
+          label: "Your Input",
           data: [{ x: input, y: cluster }],
           pointRadius: 10
         }
