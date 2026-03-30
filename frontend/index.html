@@ -2,32 +2,234 @@
 <html>
 <head>
   <title>AI Business Assistant</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+      margin: 0;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 20px;
+      font-size: 2.2rem;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      transition: 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    input {
+      width: 95%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 10px;
+      border: none;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(45deg, #3b82f6, #06b6d4);
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .result {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    canvas {
+      margin-top: 15px;
+      background: white;
+      border-radius: 10px;
+    }
+  </style>
 </head>
+
 <body>
 
-<h1>AI Business Assistant</h1>
+<h1>🚀 AI Business Assistant Dashboard</h1>
 
-<h2>Sales Prediction</h2>
-<input type="number" id="month" placeholder="Enter month">
-<button onclick="predictSales()">Predict</button>
-<p id="salesResult"></p>
+<div class="container">
+
+  <!-- Sales Prediction -->
+  <div class="card">
+    <h2>📊 Sales Prediction</h2>
+    <input type="number" id="month" placeholder="Enter month (1-12)">
+    <button onclick="predictSales()">Predict</button>
+    <p class="result" id="salesResult"></p>
+    <canvas id="salesChart"></canvas>
+  </div>
+
+  <!-- Customer Segmentation -->
+  <div class="card">
+    <h2>👥 Customer Segmentation</h2>
+    <input type="number" id="recency" placeholder="Recency">
+    <input type="number" id="frequency" placeholder="Frequency">
+    <input type="number" id="monetary" placeholder="Monetary">
+    <button onclick="segmentCustomer()">Segment</button>
+    <p class="result" id="customerResult"></p>
+    <canvas id="customerChart"></canvas>
+  </div>
+
+  <!-- Product Recommendation -->
+  <div class="card">
+    <h2>🛒 Product Recommendation</h2>
+    <input type="text" id="product" placeholder="Enter product">
+    <button onclick="recommendProduct()">Recommend</button>
+    <ul id="recommendationResult"></ul>
+  </div>
+
+</div>
 
 <script>
 const API = "https://ai-business-assistant-1pd5.onrender.com";
 
+// 📊 Sales Chart
+let salesChart;
+
+// Sales Prediction
 async function predictSales() {
-  const month = document.getElementById("month").value;
+  const result = document.getElementById("salesResult");
+  result.innerText = "⏳ Loading...";
 
-  const res = await fetch(`${API}/predict_sales`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({month: Number(month)})
-  });
+  try {
+    const month = document.getElementById("month").value;
 
-  const data = await res.json();
+    const res = await fetch(`${API}/predict_sales`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({month: Number(month)})
+    });
 
-  document.getElementById("salesResult").innerText =
-    "Predicted Sales: " + data.predicted_sales;
+    const data = await res.json();
+    const value = data.predicted_sales;
+
+    result.innerText = "Predicted Sales: " + value;
+
+    // Chart
+    const ctx = document.getElementById("salesChart");
+
+    if (salesChart) salesChart.destroy();
+
+    salesChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ["Sales"],
+        datasets: [{
+          label: "Prediction",
+          data: [value]
+        }]
+      }
+    });
+
+  } catch (error) {
+    result.innerText = "❌ Error";
+  }
+}
+
+// 👥 Customer Segmentation
+let customerChart;
+
+async function segmentCustomer() {
+  const result = document.getElementById("customerResult");
+  result.innerText = "⏳ Loading...";
+
+  try {
+    const recency = document.getElementById("recency").value;
+    const frequency = document.getElementById("frequency").value;
+    const monetary = document.getElementById("monetary").value;
+
+    const res = await fetch(`${API}/customer_segment`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        recency: Number(recency),
+        frequency: Number(frequency),
+        monetary: Number(monetary)
+      })
+    });
+
+    const data = await res.json();
+    const cluster = data.cluster;
+
+    result.innerText = "Cluster: " + cluster;
+
+    const ctx = document.getElementById("customerChart");
+
+    if (customerChart) customerChart.destroy();
+
+    customerChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ["Cluster " + cluster, "Others"],
+        datasets: [{
+          data: [1, 3]
+        }]
+      }
+    });
+
+  } catch (error) {
+    result.innerText = "❌ Error";
+  }
+}
+
+// 🛒 Product Recommendation
+async function recommendProduct() {
+  const list = document.getElementById("recommendationResult");
+  list.innerHTML = "<li>⏳ Loading...</li>";
+
+  try {
+    const product = document.getElementById("product").value;
+
+    const res = await fetch(`${API}/recommend`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({product})
+    });
+
+    const data = await res.json();
+
+    list.innerHTML = "";
+
+    data.recommendations.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      list.appendChild(li);
+    });
+
+  } catch (error) {
+    list.innerHTML = "<li>❌ Error</li>";
+  }
 }
 </script>
 
