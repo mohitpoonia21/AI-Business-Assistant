@@ -21,6 +21,7 @@ rec_path = hf_hub_download(
 )
 recommend_model = pickle.load(open(rec_path, "rb"))
 
+# normalize index once
 recommend_model.index = recommend_model.index.str.lower()
 
 # ===== SALES =====
@@ -29,7 +30,6 @@ def predict_sales():
     try:
         month = int(request.args.get("month"))
 
-        # generate trend (realistic visualization)
         months = list(range(1, month + 1))
         predictions = [float(sales_model.predict([[m]])[0]) for m in months]
 
@@ -50,12 +50,10 @@ def predict_cluster():
 
         cluster = cluster_model.predict([[spending]])
 
-        centers = cluster_model.cluster_centers_.tolist()
-
         return jsonify({
             "cluster": int(cluster[0]),
             "input": spending,
-            "centers": centers
+            "centers": cluster_model.cluster_centers_.tolist()
         })
 
     except Exception as e:
@@ -67,7 +65,12 @@ def recommend_products():
     try:
         product = request.args.get("product").strip().lower()
 
+        # strong matching
         matches = [p for p in recommend_model.index if product in p]
+
+        if not matches:
+            words = product.split()
+            matches = [p for p in recommend_model.index if any(w in p for w in words)]
 
         if not matches:
             return jsonify({"error": "Product not found"})
