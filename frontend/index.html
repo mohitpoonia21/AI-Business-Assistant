@@ -2,75 +2,56 @@
 <html>
 <head>
   <title>AI Business Assistant</title>
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #0f172a, #1e293b);
-      color: white;
       margin: 0;
+      font-family: Arial;
+      background: linear-gradient(to right, #0f172a, #1e293b);
+      color: white;
     }
 
     h1 {
       text-align: center;
       padding: 20px;
-      font-size: 2.2rem;
     }
 
     .container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      display: flex;
       gap: 20px;
       padding: 20px;
     }
 
     .card {
-      background: rgba(255,255,255,0.05);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
+      background: #1e293b;
       padding: 20px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-      transition: 0.3s;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
+      border-radius: 15px;
+      width: 33%;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
 
     input {
-      width: 95%;
+      width: 100%;
       padding: 10px;
-      margin: 8px 0;
-      border-radius: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
       border: none;
     }
 
     button {
-      padding: 10px 15px;
+      padding: 10px;
+      background: linear-gradient(45deg, #3b82f6, #06b6d4);
       border: none;
       border-radius: 10px;
-      background: linear-gradient(45deg, #3b82f6, #06b6d4);
       color: white;
       cursor: pointer;
-      margin-top: 10px;
-    }
-
-    button:hover {
-      opacity: 0.9;
-    }
-
-    .result {
-      margin-top: 10px;
-      font-weight: bold;
     }
 
     canvas {
-      margin-top: 15px;
       background: white;
       border-radius: 10px;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -81,32 +62,36 @@
 
 <div class="container">
 
-  <!-- Sales Prediction -->
+  <!-- SALES -->
   <div class="card">
     <h2>📊 Sales Prediction</h2>
-    <input type="number" id="month" placeholder="Enter month (1-12)">
+    <input type="number" id="month" placeholder="Enter month">
     <button onclick="predictSales()">Predict</button>
-    <p class="result" id="salesResult"></p>
+    <p id="salesResult"></p>
     <canvas id="salesChart"></canvas>
   </div>
 
-  <!-- Customer Segmentation -->
+  <!-- SEGMENT -->
   <div class="card">
     <h2>👥 Customer Segmentation</h2>
-    <input type="number" id="recency" placeholder="Recency">
-    <input type="number" id="frequency" placeholder="Frequency">
-    <input type="number" id="monetary" placeholder="Monetary">
-    <button onclick="segmentCustomer()">Segment</button>
-    <p class="result" id="customerResult"></p>
-    <canvas id="customerChart"></canvas>
+    <input type="number" id="spending" placeholder="Enter spending">
+    <button onclick="segment()">Segment</button>
+    <p id="clusterResult"></p>
+    <canvas id="clusterChart"></canvas>
   </div>
 
-  <!-- Product Recommendation -->
+  <!-- RECOMMEND -->
   <div class="card">
     <h2>🛒 Product Recommendation</h2>
-    <input type="text" id="product" placeholder="Enter product">
-    <button onclick="recommendProduct()">Recommend</button>
-    <ul id="recommendationResult"></ul>
+
+    <input list="products" id="product" placeholder="Enter product">
+    <datalist id="products">
+      <option value="white hanging heart t-light holder">
+      <option value="regency cakestand 3 tier">
+    </datalist>
+
+    <button onclick="recommend()">Recommend</button>
+    <ul id="recommendResult"></ul>
   </div>
 
 </div>
@@ -114,121 +99,60 @@
 <script>
 const API = "https://ai-business-assistant-1pd5.onrender.com";
 
-// 📊 Sales Chart
-let salesChart;
-
-// Sales Prediction
+// SALES
 async function predictSales() {
-  const result = document.getElementById("salesResult");
-  result.innerText = "⏳ Loading...";
+  const month = document.getElementById("month").value;
+  const res = await fetch(`${API}/predict_sales?month=${month}`);
+  const data = await res.json();
 
-  try {
-    const month = document.getElementById("month").value;
+  document.getElementById("salesResult").innerText =
+    "Prediction: " + data.prediction;
 
-    const res = await fetch(`${API}/predict_sales`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({month: Number(month)})
-    });
-
-    const data = await res.json();
-    const value = data.predicted_sales;
-
-    result.innerText = "Predicted Sales: " + value;
-
-    // Chart
-    const ctx = document.getElementById("salesChart");
-
-    if (salesChart) salesChart.destroy();
-
-    salesChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ["Sales"],
-        datasets: [{
-          label: "Prediction",
-          data: [value]
-        }]
-      }
-    });
-
-  } catch (error) {
-    result.innerText = "❌ Error";
-  }
+  new Chart(document.getElementById("salesChart"), {
+    type: "bar",
+    data: {
+      labels: ["Sales"],
+      datasets: [{ label: "Prediction", data: [data.prediction] }]
+    }
+  });
 }
 
-// 👥 Customer Segmentation
-let customerChart;
+// SEGMENT
+async function segment() {
+  const spending = document.getElementById("spending").value;
+  const res = await fetch(`${API}/predict_cluster?spending=${spending}`);
+  const data = await res.json();
 
-async function segmentCustomer() {
-  const result = document.getElementById("customerResult");
-  result.innerText = "⏳ Loading...";
+  document.getElementById("clusterResult").innerText =
+    "Cluster: " + data.cluster;
 
-  try {
-    const recency = document.getElementById("recency").value;
-    const frequency = document.getElementById("frequency").value;
-    const monetary = document.getElementById("monetary").value;
-
-    const res = await fetch(`${API}/customer_segment`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        recency: Number(recency),
-        frequency: Number(frequency),
-        monetary: Number(monetary)
-      })
-    });
-
-    const data = await res.json();
-    const cluster = data.cluster;
-
-    result.innerText = "Cluster: " + cluster;
-
-    const ctx = document.getElementById("customerChart");
-
-    if (customerChart) customerChart.destroy();
-
-    customerChart = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: ["Cluster " + cluster, "Others"],
-        datasets: [{
-          data: [1, 3]
-        }]
-      }
-    });
-
-  } catch (error) {
-    result.innerText = "❌ Error";
-  }
+  new Chart(document.getElementById("clusterChart"), {
+    type: "pie",
+    data: {
+      labels: ["Cluster", "Others"],
+      datasets: [{ data: [1, 3] }]
+    }
+  });
 }
 
-// 🛒 Product Recommendation
-async function recommendProduct() {
-  const list = document.getElementById("recommendationResult");
-  list.innerHTML = "<li>⏳ Loading...</li>";
+// RECOMMEND
+async function recommend() {
+  const product = document.getElementById("product").value;
 
-  try {
-    const product = document.getElementById("product").value;
+  const res = await fetch(`${API}/recommend_products?product=${encodeURIComponent(product)}`);
+  const data = await res.json();
 
-    const res = await fetch(`${API}/recommend`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({product})
-    });
+  const list = document.getElementById("recommendResult");
+  list.innerHTML = "";
 
-    const data = await res.json();
-
-    list.innerHTML = "";
-
-    data.recommendations.forEach(item => {
+  if (data.recommendations) {
+    data.recommendations.forEach(p => {
       const li = document.createElement("li");
-      li.textContent = item;
+      li.innerText = p;
       list.appendChild(li);
     });
-
-  } catch (error) {
-    list.innerHTML = "<li>❌ Error</li>";
+  } else {
+    list.innerHTML = "<li>Error: " + data.error + "</li>";
   }
 }
 </script>
