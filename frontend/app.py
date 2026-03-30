@@ -5,7 +5,7 @@ import numpy as np
 
 st.set_page_config(page_title="AI Business Assistant", layout="wide")
 
-BACKEND_URL = "http://127.0.0.1:5000"
+BACKEND_URL = https://ai-business-assistant-1pd5.onrender.com
 
 st.title("AI Business Assistant Dashboard")
 
