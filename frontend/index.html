@@ -6,52 +6,46 @@
 
   <style>
     body {
-      margin: 0;
       font-family: Arial;
       background: linear-gradient(to right, #0f172a, #1e293b);
       color: white;
-    }
-
-    h1 {
       text-align: center;
-      padding: 20px;
     }
 
     .container {
       display: flex;
-      gap: 20px;
-      padding: 20px;
+      justify-content: space-around;
+      margin-top: 50px;
     }
 
     .card {
       background: #1e293b;
       padding: 20px;
       border-radius: 15px;
-      width: 33%;
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      width: 30%;
     }
 
     input {
-      width: 100%;
+      width: 80%;
       padding: 10px;
-      margin: 10px 0;
+      margin: 10px;
       border-radius: 8px;
       border: none;
     }
 
     button {
-      padding: 10px;
-      background: linear-gradient(45deg, #3b82f6, #06b6d4);
+      padding: 10px 20px;
+      background: #3b82f6;
       border: none;
-      border-radius: 10px;
       color: white;
+      border-radius: 8px;
       cursor: pointer;
     }
 
     canvas {
       background: white;
       border-radius: 10px;
-      margin-top: 10px;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -64,28 +58,31 @@
 
   <!-- SALES -->
   <div class="card">
-    <h2>📊 Sales Prediction</h2>
+    <h2>Sales Prediction</h2>
     <input type="number" id="month" placeholder="Enter month">
+    <br>
     <button onclick="predictSales()">Predict</button>
     <p id="salesResult"></p>
     <canvas id="salesChart"></canvas>
   </div>
 
-  <!-- SEGMENT -->
+  <!-- CLUSTER -->
   <div class="card">
-    <h2>👥 Customer Segmentation</h2>
+    <h2>Customer Segmentation</h2>
     <input type="number" id="spending" placeholder="Enter spending">
-    <button onclick="segment()">Segment</button>
+    <br>
+    <button onclick="predictCluster()">Segment</button>
     <p id="clusterResult"></p>
     <canvas id="clusterChart"></canvas>
   </div>
 
   <!-- RECOMMEND -->
   <div class="card">
-    <h2>🛒 Product Recommendation</h2>
-    <input id="product" placeholder="Enter product">
+    <h2>Product Recommendation</h2>
+    <input type="text" id="product" placeholder="Enter product name">
+    <br>
     <button onclick="recommend()">Recommend</button>
-    <ul id="recommendResult"></ul>
+    <ul id="recommendList"></ul>
   </div>
 
 </div>
@@ -95,7 +92,7 @@ const API = "https://ai-business-assistant-1pd5.onrender.com";
 
 let salesChart, clusterChart;
 
-// ===== SALES =====
+// SALES
 async function predictSales() {
   const month = document.getElementById("month").value;
 
@@ -103,95 +100,63 @@ async function predictSales() {
   const data = await res.json();
 
   document.getElementById("salesResult").innerText =
-    "Prediction: " + data.current;
+    "Prediction: " + data.prediction;
 
-  updateSalesChart(data.months, data.trend);
-}
-
-function updateSalesChart(labels, dataPoints) {
   if (salesChart) salesChart.destroy();
 
   salesChart = new Chart(document.getElementById("salesChart"), {
     type: "bar",
     data: {
-      labels: labels,
+      labels: ["Sales"],
       datasets: [{
-        label: "Sales Trend",
-        data: dataPoints
+        label: "Prediction",
+        data: [data.prediction]
       }]
     }
   });
 }
 
-// ===== SEGMENT =====
-async function segment() {
+// CLUSTER
+async function predictCluster() {
   const spending = document.getElementById("spending").value;
 
   const res = await fetch(`${API}/predict_cluster?spending=${spending}`);
   const data = await res.json();
 
-  if (data.cluster !== undefined) {
-    document.getElementById("clusterResult").innerText =
-      "Cluster: " + data.cluster;
+  document.getElementById("clusterResult").innerText =
+    "Cluster: " + data.cluster;
 
-    updateClusterChart(data.input, data.cluster, data.centers);
-  } else {
-    document.getElementById("clusterResult").innerText =
-      "Error: " + data.error;
-  }
-}
-
-function updateClusterChart(input, cluster, centers) {
   if (clusterChart) clusterChart.destroy();
 
-  const centerPoints = centers.map((c, i) => ({
-    x: c[0],
-    y: i
-  }));
-
   clusterChart = new Chart(document.getElementById("clusterChart"), {
-    type: "scatter",
+    type: "pie",
     data: {
-      datasets: [
-        {
-          label: "Cluster Centers",
-          data: centerPoints
-        },
-        {
-          label: "Your Input",
-          data: [{ x: input, y: cluster }],
-          pointRadius: 10
-        }
-      ]
-    },
-    options: {
-      scales: {
-        x: { title: { display: true, text: "Spending" } },
-        y: { title: { display: true, text: "Cluster" }, ticks: { stepSize: 1 } }
-      }
+      labels: ["Cluster", "Others"],
+      datasets: [{
+        data: [1, 3]
+      }]
     }
   });
 }
 
-// ===== RECOMMEND =====
+// RECOMMEND
 async function recommend() {
-  const product = document.getElementById("product").value;
+  let product = document.getElementById("product").value;
 
-  const res = await fetch(`${API}/recommend_products?product=${encodeURIComponent(product)}`);
+  const res = await fetch(`${API}/recommend_products?product=${product}`);
   const data = await res.json();
 
-  const list = document.getElementById("recommendResult");
+  const list = document.getElementById("recommendList");
   list.innerHTML = "";
 
-  if (data.recommendations) {
-    data.recommendations.forEach(p => {
-      const li = document.createElement("li");
-      li.innerText = p;
-      list.appendChild(li);
-    });
-  } else {
-    list.innerHTML = "<li>Error: " + data.error + "</li>";
+  if (data.error) {
+    list.innerHTML = `<li>${data.error}</li>`;
+    return;
   }
+
+  data.recommendations.forEach(p => {
+    list.innerHTML += `<li>${p}</li>`;
+  });
 }
 </script>
 
