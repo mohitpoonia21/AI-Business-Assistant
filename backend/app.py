@@ -1,28 +1,26 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import pickle
+import joblib
 import os
-from huggingface_hub import hf_hub_download
 
 app = Flask(__name__)
 CORS(app)
 
-# ===== LOAD MODELS =====
+# ===== PATH SETUP =====
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "../models")
 
-sales_model = pickle.load(open(os.path.join(MODEL_PATH, "sales_model.pkl"), "rb"))
-cluster_model = pickle.load(open(os.path.join(MODEL_PATH, "customer_cluster.pkl"), "rb"))
+# ===== LOAD MODELS SAFELY =====
+def load_model(path):
+    try:
+        return joblib.load(path)
+    except Exception as e:
+        print("Error loading model:", e)
+        return None
 
-rec_path = hf_hub_download(
-    repo_id="mohitpoonia21/business-assistant-models",
-    filename="recommendation.pkl",
-    repo_type="dataset"
-)
-recommend_model = pickle.load(open(rec_path, "rb"))
-
-# normalize index once
-recommend_model.index = recommend_model.index.str.lower()
+sales_model = load_model(os.path.join(MODEL_PATH, "sales_model.pkl"))
+cluster_model = load_model(os.path.join(MODEL_PATH, "customer_cluster.pkl"))
+recommend_model = load_model(os.path.join(MODEL_PATH, "recommendation.pkl"))
 
 # ===== SALES =====
 @app.route("/predict_sales")
@@ -30,57 +28,52 @@ def predict_sales():
     try:
         month = int(request.args.get("month"))
 
-        months = list(range(1, month + 1))
-        predictions = [float(sales_model.predict([[m]])[0]) for m in months]
+        if sales_model:
+            prediction = sales_model.predict([[month]])[0]
+        else:
+            prediction = month * 10  # fallback
 
         return jsonify({
-            "current": predictions[-1],
-            "months": months,
-            "trend": predictions
+            "prediction": float(prediction)
         })
 
     except Exception as e:
         return jsonify({"error": str(e)})
 
-# ===== SEGMENTATION =====
+# ===== CLUSTER =====
 @app.route("/predict_cluster")
 def predict_cluster():
     try:
         spending = float(request.args.get("spending"))
 
-        cluster = cluster_model.predict([[spending]])
+        if cluster_model:
+            cluster = cluster_model.predict([[spending]])[0]
+        else:
+            cluster = 0
 
         return jsonify({
-            "cluster": int(cluster[0]),
-            "input": spending,
-            "centers": cluster_model.cluster_centers_.tolist()
+            "cluster": int(cluster)
         })
 
     except Exception as e:
         return jsonify({"error": str(e)})
 
-# ===== RECOMMENDATION =====
+# ===== RECOMMEND =====
 @app.route("/recommend_products")
 def recommend_products():
     try:
-        product = request.args.get("product").strip().lower()
+        product = request.args.get("product", "").upper()
 
-        # strong matching
-        matches = [p for p in recommend_model.index if product in p]
+        if recommend_model is None:
+            return jsonify({"error": "Model not loaded"})
 
-        if not matches:
-            words = product.split()
-            matches = [p for p in recommend_model.index if any(w in p for w in words)]
+        if product not in recommend_model.index:
+            return jsonify({"error": f"{product} not found"})
 
-        if not matches:
-            return jsonify({"error": "Product not found"})
-
-        product = matches[0]
-
-        similar = recommend_model[product].sort_values(ascending=False)[1:6]
+        recs = recommend_model[product].sort_values(ascending=False)[1:6]
 
         return jsonify({
-            "recommendations": similar.index.tolist()
+            "recommendations": recs.index.tolist()
         })
 
     except Exception as e:
