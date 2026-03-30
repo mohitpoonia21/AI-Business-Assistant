@@ -11,11 +11,9 @@ CORS(app)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "../models")
 
-# Load small models
 sales_model = pickle.load(open(os.path.join(MODEL_PATH, "sales_model.pkl"), "rb"))
 cluster_model = pickle.load(open(os.path.join(MODEL_PATH, "customer_cluster.pkl"), "rb"))
 
-# Load recommendation model from Hugging Face
 rec_path = hf_hub_download(
     repo_id="mohitpoonia21/business-assistant-models",
     filename="recommendation.pkl",
@@ -23,67 +21,47 @@ rec_path = hf_hub_download(
 )
 recommend_model = pickle.load(open(rec_path, "rb"))
 
-# ===== HOME ROUTE =====
-@app.route("/")
-def home():
-    return jsonify({"message": "AI Business Assistant Backend Running 🚀"})
+# normalize once
+recommend_model.index = recommend_model.index.str.lower()
 
-
-# ===== SALES PREDICTION =====
-@app.route('/predict_sales', methods=['POST'])
+# ===== SALES =====
+@app.route("/predict_sales")
 def predict_sales():
     try:
-        data = request.get_json()
-        month = int(data['month'])
-
+        month = int(request.args.get("month"))
         prediction = sales_model.predict([[month]])
-
-        return jsonify({
-            "predicted_sales": float(prediction[0])
-        })
+        return jsonify({"prediction": float(prediction[0])})
     except Exception as e:
         return jsonify({"error": str(e)})
 
-
-# ===== CUSTOMER SEGMENTATION =====
-@app.route('/customer_segment', methods=['POST'])
-def customer_segment():
+# ===== SEGMENTATION =====
+@app.route("/predict_cluster")
+def predict_cluster():
     try:
-        data = request.get_json()
-
-        recency = float(data['recency'])
-        frequency = float(data['frequency'])
-        monetary = float(data['monetary'])
-
-        cluster = cluster_model.predict([[recency, frequency, monetary]])
-
-        return jsonify({
-            "cluster": int(cluster[0])
-        })
+        spending = float(request.args.get("spending"))
+        cluster = cluster_model.predict([[spending]])
+        return jsonify({"cluster": int(cluster[0])})
     except Exception as e:
         return jsonify({"error": str(e)})
 
-
-# ===== PRODUCT RECOMMENDATION =====
-@app.route('/recommend', methods=['POST'])
-def recommend():
+# ===== RECOMMENDATION =====
+@app.route("/recommend_products")
+def recommend_products():
     try:
-        data = request.get_json()
-        product = data['product']
+        product = request.args.get("product").strip().lower()
 
         if product not in recommend_model.index:
             return jsonify({"error": "Product not found"})
 
-        similar_products = recommend_model[product].sort_values(ascending=False)[1:6]
+        similar = recommend_model[product].sort_values(ascending=False)[1:6]
 
         return jsonify({
-            "recommendations": similar_products.index.tolist()
+            "recommendations": similar.index.tolist()
         })
     except Exception as e:
         return jsonify({"error": str(e)})
 
-
-# ===== RUN SERVER =====
+# ===== RUN =====
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port)
