@@ -13,7 +13,7 @@
 <p id="salesResult"></p>
 
 <script>
-const API = https://ai-business-assistant-1pd5.onrender.com
+const API = "https://ai-business-assistant-1pd5.onrender.com";
 
 async function predictSales() {
   const month = document.getElementById("month").value;
@@ -25,6 +25,7 @@ async function predictSales() {
   });
 
   const data = await res.json();
+
   document.getElementById("salesResult").innerText =
     "Predicted Sales: " + data.predicted_sales;
 }
