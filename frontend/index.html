@@ -1,1 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Business Assistant</title>
+</head>
+<body>
 
+<h1>AI Business Assistant</h1>
+
+<h2>Sales Prediction</h2>
+<input type="number" id="month" placeholder="Enter month">
+<button onclick="predictSales()">Predict</button>
+<p id="salesResult"></p>
+
+<script>
+const API = "https://your-render-backend-url.onrender.com"; // replace this
+
+async function predictSales() {
+  const month = document.getElementById("month").value;
+
+  const res = await fetch(`${API}/predict_sales`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({month: Number(month)})
+  });
+
+  const data = await res.json();
+  document.getElementById("salesResult").innerText =
+    "Predicted Sales: " + data.predicted_sales;
+}
+</script>
+
+</body>
+</html>
